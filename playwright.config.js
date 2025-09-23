@@ -38,7 +38,8 @@ export default defineConfig({
 
     /* Browser options */
     headless: false,
-    viewport: { width: 1280, height: 720 },
+    viewport: { width: 700, height: 720 },
+    // viewport: { width: 1280, height: 720 },
     ignoreHTTPSErrors: true,
     video: "retain-on-failure",
     screenshot: "only-on-failure",
