@@ -20,16 +20,16 @@ export const getProductPrice = async (productLocator) => {
 
 export const isSortedAsc = (arr) => {
   return arr.every((val, i, a) => i === 0 || a[i - 1] <= val);
-}
+};
 
 export const isSortedDesc = (arr) => {
   return arr.every((val, i, a) => i === 0 || a[i - 1] >= val);
-}
+};
 
 export const testData = {
   testProducts: [
-    { name: "laptop", expectedPrice: 1590, category: "computers" },
     { name: "book", expectedPrice: 10, category: "books" },
+    { name: "laptop", expectedPrice: 1590, category: "computers" },
     { name: "shirt", expectedPrice: 15, category: "apparel-shoes" },
   ],
   discountCodes: {
@@ -56,13 +56,21 @@ export const testData = {
   registeredUser: {
     firstName: "Test",
     lastName: "User",
-    loginEmail: "user.test123@test.com",
-    password: "testuser",
+    loginEmail: "e.e@e.com",
+    // loginEmail: "bc@bc.com",
+    password: "eeeeee",
+    // password: "aaaaaa",
     country: "Nicaragua",
     city: "Lagos",
     address1: "114 Aba Road",
     zip: "12345",
     phone: "123-456-7890",
+  },
+  updatedProfile: {
+    firstName: "Jane",
+    lastName: "Smith",
+    email: `test${Date.now()}@test.com`,
+    gender: "Female",
   },
   paymentMethods: [
     "Payments.CashOnDelivery",
@@ -84,6 +92,11 @@ export const testData = {
     "Next Day Air___Shipping.FixedRate",
     "2nd Day Air___Shipping.FixedRate",
   ],
+  newPassword: {
+    current: "aaaaaa",
+    new: "bbbbbb",
+    confirm: "bbbbbb",
+  },
 };
 
 export const getCartItemRows = async (page) => {
@@ -240,6 +253,82 @@ export const addProductToCart = async (page, productQuery) => {
   }
 };
 
+export const addProductToWishlist = async (page, productQuery) => {
+  // Search for the product
+  const searchInput = page
+    .locator("#small-searchterms")
+    .or(page.getByPlaceholder(/search/i));
+
+  if (await searchInput.isVisible()) {
+    await searchInput.fill(productQuery);
+    await searchInput.press("Enter");
+    await page.waitForLoadState("networkidle");
+  } else {
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+  }
+
+  // Locate product titles
+  const productCards = page.locator(
+    ".product-grid .item-box .product-item .details .product-title a"
+  );
+  const count = await productCards.count();
+
+  let matchedIndex = -1;
+
+  for (let i = 0; i < count; i++) {
+    const text = (await productCards.nth(i).innerText()).trim();
+
+    // 1. Exact match (case-insensitive)
+    if (text.toLowerCase() === productQuery.toLowerCase()) {
+      matchedIndex = i;
+      break;
+    }
+
+    // 2. Partial match (case-insensitive)
+    if (text.toLowerCase().includes(productQuery.toLowerCase())) {
+      matchedIndex = i;
+      break;
+    }
+  }
+
+  if (matchedIndex === -1) {
+    throw new Error(`No product matched query: "${productQuery}"`);
+  }
+
+  // Click on matched product
+  const productCard = productCards.nth(matchedIndex);
+  await productCard.click();
+  await page.waitForLoadState("networkidle");
+
+  // Fill gift card fields if present
+  if (await page.locator("#giftcard_2_RecipientName").isVisible()) {
+    await page.fill("#giftcard_2_RecipientName", "Test Recipient");
+  }
+  if (await page.locator("#giftcard_2_RecipientEmail").isVisible()) {
+    await page.fill("#giftcard_2_RecipientEmail", "test@example.com");
+  }
+  if (await page.locator("#giftcard_2_SenderName").isVisible()) {
+    await page.fill("#giftcard_2_SenderName", "Test Sender");
+  }
+  if (await page.locator("#giftcard_2_SenderEmail").isVisible()) {
+    await page.fill("#giftcard_2_SenderEmail", "test@example.com");
+  }
+
+  // Add to cart
+  const addToWishlistButton = page.locator("input.add-to-wishlist-button");
+  if (await addToWishlistButton.isVisible()) {
+    await expect(addToWishlistButton).toBeVisible();
+    await addToWishlistButton.click();
+
+    // Wait for cart update
+    const successMessage = /The product has been added to your wishlist/i;
+    await expect(page.locator(".bar-notification")).toContainText(
+      successMessage
+    );
+  }
+};
+
 export const estimatedShipping = async (page, country) => {
   const shippingSection = page.locator(".estimate-shipping");
 
@@ -271,15 +360,14 @@ export const proceedToCheckout = async (page) => {
 
 export const login = async (page, loginDetails) => {
   await page.goto("/login");
-  await page
-    .getByLabel(/email|username/i)
-    .fill(loginDetails.loginEmail);
+  await page.getByLabel(/email|username/i).fill(loginDetails.loginEmail);
   await page.getByLabel(/password/i).fill(loginDetails.password);
   await page.getByRole("button", { name: /login|log in|sign in/i }).click();
-  await page.waitForLoadState("networkidle");await expect(page.locator(".header-links li .account")).toHaveText(
+  await page.waitForLoadState("networkidle");
+  await expect(page.locator(".header-links li .account")).toHaveText(
     loginDetails.loginEmail
   );
-}
+};
 
 export const checkoutAsGuest = async (page) => {
   const checkoutAsGuest = page.locator("input[value='Checkout as Guest']");
@@ -353,7 +441,11 @@ export const fillBillingAddress = async (page, user) => {
   return user;
 };
 
-export const validateShippingAddress = async (page, user, inStorePickup = false) => {
+export const validateShippingAddress = async (
+  page,
+  user,
+  inStorePickup = false
+) => {
   const inStorePickupLocator = page.locator("#PickUpInStore");
 
   if (inStorePickup && (await inStorePickupLocator.isVisible())) {
@@ -459,7 +551,7 @@ export const safeIsVisible = async (locator, timeout = 3000) => {
   } catch {
     return false;
   }
-}
+};
 
 export const fillPaymentInfo = async (page, paymentData) => {
   const selectCard = page.locator(".payment-info .info #CreditCardType");
@@ -606,13 +698,13 @@ export const confirmationMessage = async (page) => {
 
 export const getOrderNumber = async (page) => {
   const order = await page.locator("ul[class='details'] li").first();
-  
-  await expect(order).toBeVisible()
+
+  await expect(order).toBeVisible();
 
   const orderText = await order.textContent();
 
   const orderNumber = orderText?.match(/\d+/)?.[0] ?? null;
 
   console.log("Order number:", orderNumber);
-  return orderNumber
-}
+  return orderNumber;
+};

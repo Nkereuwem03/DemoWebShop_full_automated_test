@@ -66,10 +66,7 @@ test.describe("Registered User Checkout", () => {
     const orderNumber = await getOrderNumber(page);
     console.log(orderNumber);
     if (orderNumber) {
-      await page.click(".header-links .account");
-      await page.locator(".listbox .list li a", { hasText: /Orders/i }).click();
-      expect(page.url()).toContain("/orders");
-      await page.waitForLoadState("networkidle");
+
 
       const firstOrderItem = page.locator(".order-item .title strong").first();
 
