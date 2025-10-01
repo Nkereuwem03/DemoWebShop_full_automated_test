@@ -53,6 +53,16 @@ export const testData = {
     zip: "12345",
     phone: "123-456-7890",
   },
+  suspiciousUser: {
+    firstName: "Fraud",
+    lastName: "User",
+    email: "suspicious@user.com",
+    country: "Nigeria",
+    city: "Lagos",
+    address1: "456 Fraud St",
+    zip: "54321",
+    phone: "987-654-3210",
+  },
   registeredUser: {
     firstName: "Test",
     lastName: "User",
@@ -177,6 +187,56 @@ export const waitForCartUpdate = async (page) => {
   await page.waitForLoadState("networkidle");
 };
 
+export const addFeaturedProductToCart = async (
+  page,
+  noOfFeaturedProductsToAdd
+) => {
+  // Locate product titles
+  const productCards = page.locator(
+    ".product-grid .item-box .product-item .details .product-title a"
+  );
+  const count = await productCards.count();
+
+  if (count > 0) {
+    for (let i = 0; i < Math.min(count, noOfFeaturedProductsToAdd); i++) {
+      const productCard = productCards.nth(i);
+      await productCard.click();
+      await page.waitForLoadState("networkidle");
+
+      // Fill gift card fields if present
+      if (await page.locator("#giftcard_2_RecipientName").isVisible()) {
+        await page.fill("#giftcard_2_RecipientName", "Test Recipient");
+      }
+      if (await page.locator("#giftcard_2_RecipientEmail").isVisible()) {
+        await page.fill("#giftcard_2_RecipientEmail", "test@example.com");
+      }
+      if (await page.locator("#giftcard_2_SenderName").isVisible()) {
+        await page.fill("#giftcard_2_SenderName", "Test Sender");
+      }
+      if (await page.locator("#giftcard_2_SenderEmail").isVisible()) {
+        await page.fill("#giftcard_2_SenderEmail", "test@example.com");
+      }
+      if (await page.locator("#product_attribute_75_5_31_96").isVisible()) {
+        await page.check("#product_attribute_75_5_31_96");
+      }
+
+      // Add to cart
+      const addToCartButton = page.locator("input.button-1.add-to-cart-button");
+      if (await addToCartButton.isVisible()) {
+        await expect(addToCartButton).toBeVisible();
+        await addToCartButton.click();
+
+        // Wait for cart update
+        const successMessage =
+          /The product has been added to your shopping cart/i;
+        await expect(page.locator(".bar-notification")).toContainText(
+          successMessage
+        );
+      }
+    }
+  }
+};
+
 export const addProductToCart = async (page, productQuery) => {
   // Search for the product
   const searchInput = page
@@ -237,6 +297,9 @@ export const addProductToCart = async (page, productQuery) => {
   }
   if (await page.locator("#giftcard_2_SenderEmail").isVisible()) {
     await page.fill("#giftcard_2_SenderEmail", "test@example.com");
+  }
+  if (await page.locator("#product_attribute_75_5_31_96").isVisible()) {
+    await page.check("#product_attribute_75_5_31_96");
   }
 
   // Add to cart
@@ -345,7 +408,6 @@ export const estimatedShipping = async (page, country) => {
 
 export const proceedToCheckout = async (page) => {
   await page.goto("/cart");
-  await page.waitForLoadState("networkidle");
 
   const termsCheckbox = page.locator("#termsofservice");
   await expect(termsCheckbox).toBeVisible();
